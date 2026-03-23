@@ -746,7 +746,7 @@ function renderLedger() {
   const partyLabel = activeTab === 'sale' ? '客户' : '供应商';
 
   // Update title and button labels
-  ledgerTitle.innerHTML = `📋 ${modeLabel}记录 <span class="count">${data.length}</span>`;
+  ledgerTitle.innerHTML = `📋 ${modeLabel}记录 <span class="count" id="ledger-count">${data.length}</span>`;
   exportBtn.textContent = activeTab === 'sale' ? '⬇️ 导出销售CSV' : '⬇️ 导出采购CSV';
   sumLabel1.textContent = activeTab === 'sale' ? '今日销售总额(含税)' : '今日采购总额(含税)';
   sumLabel2.textContent = activeTab === 'sale' ? '今日已收款' : '今日已付款';
