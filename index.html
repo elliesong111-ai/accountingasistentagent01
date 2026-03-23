@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>菌优 · 销售记账助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --p:#1a5c9a; --pd:#134a7c; --g:#2e8b57; --gl:#3aad6e;
+  --gold:#e8a020; --err:#dc2626;
+  --bg:#f0f4f8; --card:#fff; --border:#dde3eb;
+  --text:#2c3e50; --muted:#6b7a8d; --r:14px;
+}
+html,body{height:100%;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex;flex-direction:column;height:100vh}
+
+/* ── Header ── */
+header{background:linear-gradient(135deg,var(--pd),var(--p),var(--g));padding:14px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+header .logo{width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+header .info .title{font-size:17px;font-weight:700;color:#fff}
+header .info .sub{font-size:12px;color:rgba(255,255,255,.75)}
+header .date-badge{margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;color:#fff;font-size:13px;font-weight:600}
+
+/* ── Main layout ── */
+.main{display:flex;flex:1;overflow:hidden;gap:0}
+
+/* ── Chat panel ── */
+.chat-panel{flex:1;display:flex;flex-direction:column;min-width:0}
+.messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:var(--p);border-radius:2px}
+
+.msg{display:flex;gap:10px;max-width:88%}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg .avatar{width:34px;height:34px;min-width:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px}
+.msg.bot .avatar{background:linear-gradient(135deg,var(--p),var(--g))}
+.msg.user .avatar{background:linear-gradient(135deg,var(--g),var(--gl))}
+.bubble{padding:12px 16px;border-radius:var(--r);font-size:14px;line-height:1.65;max-width:100%}
+.msg.bot .bubble{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.msg.user .bubble{background:var(--p);color:#fff;border-top-right-radius:4px}
+.bubble b{font-weight:700}
+.bubble .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin:1px 2px}
+.tag.green{background:#dcfce7;color:#166534}
+.tag.blue{background:#dbeafe;color:#1e40af}
+.tag.gold{background:#fef3c7;color:#92400e}
+.tag.red{background:#fee2e2;color:#991b1b}
+.tag.gray{background:#f3f4f6;color:#374151}
+
+/* Confirm card */
+.confirm-card{background:linear-gradient(135deg,#f0f9ff,#f0fdf4);border:1.5px solid var(--p);border-radius:12px;padding:16px;margin-top:8px}
+.confirm-card .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:13px}
+.confirm-card .row:last-of-type{border-bottom:none}
+.confirm-card .row .k{color:var(--muted)}
+.confirm-card .row .v{font-weight:600}
+.confirm-card .total{margin-top:10px;padding:10px;background:var(--p);border-radius:8px;color:#fff;text-align:center}
+.confirm-card .total .num{font-size:22px;font-weight:800}
+.confirm-card .total .label{font-size:11px;opacity:.8}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{padding:8px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px}
+.btn-green{background:var(--g);color:#fff}
+.btn-green:hover{background:var(--gl)}
+.btn-blue{background:var(--p);color:#fff}
+.btn-blue:hover{background:var(--pd)}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-ghost:hover{background:var(--border)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-red{background:var(--err);color:#fff}
+
+/* Quick chips */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;color:var(--text);font-size:13px;cursor:pointer;transition:all .2s;font-family:inherit}
+.chip:hover{border-color:var(--p);color:var(--p);background:#eff6ff}
+
+/* Input area */
+.input-area{padding:14px 20px;background:var(--card);border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.input-area textarea{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text);resize:none;outline:none;min-height:44px;max-height:120px;transition:border .2s;line-height:1.5}
+.input-area textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(26,92,154,.1)}
+.send-btn{width:44px;height:44px;min-width:44px;background:var(--p);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.send-btn:hover{background:var(--pd)}
+
+/* ── Ledger panel ── */
+.ledger-panel{width:420px;min-width:420px;background:var(--card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ledger-tabs{display:flex;border-bottom:2px solid var(--border);background:#f8fafc;flex-shrink:0}
+.ltab{flex:1;padding:10px 6px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:-2px}
+.ltab.active{color:var(--p);border-bottom-color:var(--p);background:#fff}
+.ltab .tcnt{background:var(--muted);color:#fff;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;padding:0 4px}
+.ltab.active .tcnt{background:var(--p)}
+.ledger-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ledger-header h3{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ledger-header .count{background:var(--p);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.ledger-body{flex:1;overflow-y:auto;padding:0}
+.ledger-body::-webkit-scrollbar{width:4px}
+.ledger-body::-webkit-scrollbar-thumb{background:var(--p);border-radius:2px}
+.ledger-empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:14px}
+.ledger-row{padding:14px 20px;border-bottom:1px solid var(--border);transition:background .15s}
+.ledger-row:hover{background:#f8fafc}
+.ledger-row .lr-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.ledger-row .lr-name{font-size:14px;font-weight:700}
+.ledger-row .lr-amount{font-size:15px;font-weight:800;color:var(--p)}
+.ledger-row .lr-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ledger-row .lr-meta span{font-size:11px;color:var(--muted)}
+.ledger-row .lr-meta .dot{color:var(--border)}
+.ledger-footer{padding:16px 20px;border-top:1.5px solid var(--p);background:#f0f4f8;flex-shrink:0}
+.ledger-footer .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.summary-item{background:#fff;border-radius:8px;padding:10px;border:1px solid var(--border)}
+.summary-item .sk{font-size:11px;color:var(--muted);margin-bottom:3px}
+.summary-item .sv{font-size:16px;font-weight:800;color:var(--p)}
+.export-btn{width:100%;padding:11px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
+.export-btn:hover{background:var(--gl)}
+.export-btn:disabled{background:#aaa;cursor:not-allowed}
+
+/* ── Toast ── */
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:#222;color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.green{background:var(--g)}
+
+/* ── Responsive ── */
+@media(max-width:800px){
+  .ledger-panel{display:none}
+}
+
+/* ── Excel sync modal ── */
+.sync-btn{width:100%;padding:11px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s;margin-top:8px}
+.sync-btn:hover{background:var(--pd)}
+.sync-btn:disabled{background:#aaa;cursor:not-allowed}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:900}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:28px 26px;width:480px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-box h4{font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px}
+.modal-box .m-sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.file-drop{border:2px dashed var(--border);border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;transition:all .2s;margin:0 0 16px;position:relative}
+.file-drop:hover,.file-drop.drag{border-color:var(--p);background:#eff6ff}
+.file-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.file-drop .fd-icon{font-size:28px;margin-bottom:6px}
+.file-drop .fd-label{font-size:13px;font-weight:600;color:var(--p)}
+.file-drop .fd-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.file-drop.has-file{border-color:var(--g);background:#f0faf5}
+.file-drop.has-file .fd-icon::before{content:'✅  '}
+.sync-step{display:none}
+.sync-step.active{display:block}
+.sheet-sel{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px}
+.col-map-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+.col-map-table th{background:var(--p);color:#fff;padding:6px 8px;text-align:left}
+.col-map-table td{padding:5px 8px;border-bottom:1px solid var(--border)}
+.col-map-table tr:nth-child(even) td{background:#f8fafc}
+.col-input{width:48px;padding:4px;border:1.5px solid var(--border);border-radius:4px;font-size:12px;text-align:center}
+.col-ok{color:var(--g);font-weight:700}
+.col-warn{color:var(--gold)}
+.modal-btns{display:flex;gap:8px;margin-top:4px}
+.modal-btns button{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
+.m-confirm{background:var(--p);color:#fff}
+.m-confirm:hover{background:var(--pd)}
+.m-cancel{background:transparent;color:var(--muted);border:1.5px solid var(--border) !important}
+.m-cancel:hover{background:var(--border)}
+.merge-result{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+.merge-result.ok{background:#dcfce7;color:#166534}
+.merge-result.err{background:#fee2e2;color:#991b1b}
+</style>
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<body>
+
+<header>
+  <div class="logo">🍄</div>
+  <div class="info">
+    <div class="title">菌优 · 销售记账助手</div>
+    <div class="sub">告诉我卖了什么，我来记账</div>
+  </div>
+  <div class="date-badge" id="date-badge">—</div>
+</header>
+
+<div class="main">
+  <!-- ── Chat ── -->
+  <div class="chat-panel">
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <textarea id="input" placeholder="例：卖了20万袋平菇给河南菌丰基地，已收款&#10;或：进货20万袋平菇原种，已付款" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" onclick="send()">➤</button>
+    </div>
+  </div>
+
+  <!-- ── Ledger ── -->
+  <div class="ledger-panel">
+    <div class="ledger-tabs">
+      <button class="ltab active" id="ltab-sale" onclick="switchTab('sale')">
+        💰 销售 <span class="tcnt" id="tab-sale-cnt">0</span>
+      </button>
+      <button class="ltab" id="ltab-purchase" onclick="switchTab('purchase')">
+        📦 采购 <span class="tcnt" id="tab-pur-cnt">0</span>
+      </button>
+    </div>
+    <div class="ledger-header">
+      <h3 id="ledger-title">📋 销售记录 <span class="count" id="ledger-count">0</span></h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--muted)" id="ledger-date">—</span>
+        <button class="btn btn-red" style="font-size:11px;padding:4px 10px;height:auto" onclick="clearRecords()">🗑️ 清空</button>
+      </div>
+    </div>
+    <div class="ledger-body" id="ledger-body">
+      <div class="ledger-empty">暂无记录<br>在左侧对话框开始记账</div>
+    </div>
+    <div class="ledger-footer">
+      <div class="summary">
+        <div class="summary-item"><div class="sk" id="sum-label-1">今日销售总额(含税)</div><div class="sv" id="sum-total">¥0</div></div>
+        <div class="summary-item"><div class="sk" id="sum-label-2">今日已收款</div><div class="sv" id="sum-received">¥0</div></div>
+        <div class="summary-item"><div class="sk" id="sum-label-3">今日订单数</div><div class="sv" id="sum-count">0</div></div>
+        <div class="summary-item"><div class="sk" id="sum-label-4">未收款</div><div class="sv" id="sum-pending" style="color:var(--err)">¥0</div></div>
+      </div>
+      <button class="export-btn" id="export-btn-label" onclick="exportCSV()" disabled>⬇️ 导出销售CSV</button>
+      <button class="sync-btn"  id="sync-btn"   onclick="showSyncModal()" disabled>📥 同步到 Excel 台账</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Excel Sync Modal ── -->
+<div class="modal-overlay" id="sync-modal" onclick="if(event.target===this)hideSyncModal()">
+  <div class="modal-box">
+    <!-- Step 1: File Upload -->
+    <div class="sync-step active" id="sync-step-1">
+      <h4>📥 同步到 Excel 台账</h4>
+      <p class="m-sub">
+        上传你的「菌优菌种_账务管理表格.xlsx」，系统会把 bot 里所有订单写入相应 Sheet
+        （重复订单号自动跳过，已有收款状态同步更新）。
+        下载后用 Excel 打开，相关表格会自动更新。
+      </p>
+      <div class="file-drop" id="file-drop">
+        <input type="file" id="excel-file" accept=".xlsx" onchange="onFileSelected(this)">
+        <div class="fd-icon" id="fd-icon">📂</div>
+        <div class="fd-label">点击选择或拖拽 .xlsx 文件到这里</div>
+        <div class="fd-hint" id="fd-hint">菌优菌种_账务管理表格.xlsx</div>
+      </div>
+      <div class="modal-btns">
+        <button class="m-confirm" id="m-step1-next" onclick="syncStep2()" disabled>下一步</button>
+        <button class="m-cancel" onclick="hideSyncModal()">取消</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Sheet Selection & Column Detection -->
+    <div class="sync-step" id="sync-step-2">
+      <h4>📋 选择数据Sheet及列结构</h4>
+      <p class="m-sub">选择销售数据和采购数据所在的 Sheet，系统会自动检测列结构。</p>
+
+      <label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">销售数据写入：</label>
+      <select class="sheet-sel" id="sheet-sale">
+        <option value="">-- 请选择 --</option>
+      </select>
+
+      <label style="font-size:12px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">采购数据写入：</label>
+      <select class="sheet-sel" id="sheet-purchase">
+        <option value="">-- 跳过 --</option>
+      </select>
+
+      <div class="modal-btns">
+        <button class="m-confirm" id="m-step2-detect" onclick="syncStep3()" disabled>检测列结构</button>
+        <button class="m-cancel" onclick="backToStep1()">返回</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Column Mapping & Confirm -->
+    <div class="sync-step" id="sync-step-3">
+      <h4>🔗 列字段映射</h4>
+      <p class="m-sub">确认以下字段映射，或手动输入列字母（如 A、B、C...）</p>
+
+      <table class="col-map-table" id="col-map-table">
+        <thead>
+          <tr><th>系统字段</th><th>Excel列</th><th>列标题</th></tr>
+        </thead>
+        <tbody id="col-map-body">
+        </tbody>
+      </table>
+
+      <div class="merge-result" id="merge-result"></div>
+
+      <div class="modal-btns">
+        <button class="m-confirm" id="m-step3-merge" onclick="mergeToExcel()">合并并下载</button>
+        <button class="m-cancel" onclick="backToStep1()">返回</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════ CONSTANTS ═══════════════════════════════════════════════════
+const PRODUCTS = [
+  { keys:['平菇','PG01','平菇菌种'], id:'PG01', name:'平菇菌种PG01', stdPrice:180, type:'引流款' },
+  { keys:['香菇','L26','香菇菌种'], id:'XG',   name:'香菇菌种L26',  stdPrice:null, type:'价值定价' },
+  { keys:['杏鲍菇','杏鲍'],         id:'XBG',  name:'杏鲍菇菌种',   stdPrice:null, type:'价值定价' },
+  { keys:['灵芝','GZ08','赤灵芝'],   id:'LZ',   name:'灵芝菌种GZ08', stdPrice:null, type:'价值定价' },
+  { keys:['猴头菇','猴头'],          id:'HTG',  name:'猴头菇菌种',   stdPrice:null, type:'价值定价' },
+  { keys:['金针菇','金针'],          id:'JZG',  name:'金针菇菌种',   stdPrice:null, type:'价值定价' },
+  { keys:['花菇'],                   id:'HG',   name:'花菇菌种',     stdPrice:null, type:'价值定价' },
+  { keys:['茶树菇','茶树'],          id:'CSG',  name:'茶树菇菌种',   stdPrice:null, type:'价值定价' },
+  { keys:['榆黄菇','榆黄'],          id:'YHG',  name:'榆黄菇菌种',   stdPrice:null, type:'价值定价' },
+];
+const PURCHASE_PRODUCTS = [
+  { keys:['平菇原种','平菇','PG01'], id:'PPG01', name:'平菇原种PG01', stdPrice:120, type:'引流款' },
+  { keys:['香菇原种','香菇'],        id:'PXG',   name:'香菇原种L26',  stdPrice:null, type:'价值定价' },
+  { keys:['杏鲍菇原种','杏鲍菇'],    id:'PXBG',  name:'杏鲍菇原种',   stdPrice:null, type:'价值定价' },
+  { keys:['灵芝原种','灵芝'],        id:'PLZ',   name:'灵芝原种GZ08', stdPrice:null, type:'价值定价' },
+  { keys:['猴头菇原种','猴头菇'],    id:'PHTG',  name:'猴头菇原种',   stdPrice:null, type:'价值定价' },
+  { keys:['金针菇原种','金针菇'],    id:'PJZG',  name:'金针菇原种',   stdPrice:null, type:'价值定价' },
+  { keys:['花菇原种','花菇'],        id:'PHG',   name:'花菇原种',     stdPrice:null, type:'价值定价' },
+  { keys:['茶树菇原种','茶树菇'],    id:'PCSG',  name:'茶树菇原种',   stdPrice:null, type:'价值定价' },
+  { keys:['榆黄菇原种','榆黄菇'],    id:'PYHG',  name:'榆黄菇原种',   stdPrice:null, type:'价值定价' },
+];
+const TAX = 0.09;
+const SEQ = { v:1 };
+const PUR_SEQ  = { v:1 };
+const LS_KEY  = 'jyspawn_sales';
+const LS_SEQ  = 'jyspawn_seq';
+const LS_PUR   = 'jyspawn_purchases';
+const LS_PURSEQ= 'jyspawn_purseq';
+const LS_EXCEL_MAP = 'jyspawn_excel_map';
+
+const FIELD_MAP = {
+  date:     ['日期','date','时间'],
+  ordNo:    ['订单','单号','order','编号','单据'],
+  party:    ['客户','供应商','买家','卖家','往来单位','对方'],
+  product:  ['品种','产品','货物','商品','菌种','原种'],
+  qty:      ['数量','万袋','qty'],
+  price:    ['单价','价格','price'],
+  amount:   ['金额','总额','amount','含税','税后'],
+  received: ['已收','收款','实收','已付','付款','实付'],
+  payment:  ['付款状态','收款状态','状态','status'],
+  notes:    ['备注','note','remark'],
+};
+
+// ═══════ STATE ════════════════════════════════════════════════════════
+let state = 'idle'; // idle | need_price | need_customer | need_payment | confirm
+let pending = {};   // partial order being built
+let orders  = [];   // committed orders — loaded from localStorage on init
+let purchases = []; // committed purchases — loaded from localStorage on init
+let activeTab = 'sale'; // which tab is shown in ledger
+
+// Sync modal state
+let _syncFile = null;
+let _syncWb = null;
+let _syncSheets = [];
+
+// ═══════ DATE ═════════════════════════════════════════════════════════
+function today() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+function fmtDate(s) {
+  return s.replace(/-/g,'/');
+}
+function ordNo() {
+  const d = today().replace(/-/g,'');
+  return 'JY' + d + String(SEQ.v++).padStart(3,'0');
+}
+function purOrdNo() {
+  const d = today().replace(/-/g,'');
+  return 'CG' + d + String(PUR_SEQ.v++).padStart(3,'0');
+}
+
+// ═══════ MODE DETECTION ═══════════════════════════════════════════════
+function detectMode(text) {
+  if (/进货|采购|买了|买入|进了|入库|收货|从.*买/.test(text)) return 'purchase';
+  return 'sale';
+}
+
+// ═══════ PARSER ═══════════════════════════════════════════════════════
+function parse(text) {
+  const t = text.trim();
+  const result = {};
+
+  // Detect mode
+  result.mode = detectMode(t);
+
+  // Product — search appropriate array based on mode
+  const prodArray = result.mode === 'purchase' ? PURCHASE_PRODUCTS : PRODUCTS;
+  for (const p of prodArray) {
+    if (p.keys.some(k => t.includes(k))) { result.product = p; break; }
+  }
+
+  // Quantity (万袋 or 袋)
+  let m;
+  m = t.match(/(\d+(?:\.\d+)?)\s*万袋/);
+  if (m) result.qty = parseFloat(m[1]);
+  else {
+    m = t.match(/(\d+(?:\.\d+)?)\s*万/);
+    if (m && result.product) result.qty = parseFloat(m[1]);
+  }
+  if (!result.qty) {
+    m = t.match(/(\d+(?:\.\d+)?)\s*袋/);
+    if (m) result.qty = parseFloat(m[1]) / 10000;
+  }
+
+  // Price — multiple patterns, pick most specific first
+  const pricePatterns = [
+    /单价[是为]?\s*[¥￥]?\s*(\d+(?:\.\d+)?)/,
+    /[¥￥]\s*(\d+(?:\.\d+)?)/,
+    /(\d+(?:\.\d+)?)\s*[元块]\s*[\/一]\s*万/,
+    /(\d+(?:\.\d+)?)\s*[元块]\s*一万/,
+    /价格[是为]?\s*(\d+(?:\.\d+)?)/,
+    /(\d+(?:\.\d+)?)\s*[元块钱](?!\s*万袋)(?!\s*万)(?!\s*袋)/,
+  ];
+  for (const pat of pricePatterns) {
+    m = t.match(pat);
+    if (m) { result.price = parseFloat(m[1]); break; }
+  }
+
+  // Party (Customer or Supplier) — after keywords
+  const partyPatterns = [
+    /卖给\s*([^\s，,。！!？?]+)/,
+    /给\s*([^\s，,。！!？?0-9¥￥]+)/,
+    /买[自从于]\s*([^\s，,。！!？?]+)/,
+    /从\s*([^\s，,。！!？?]+)买/,
+    /客户[是为]?\s*([^\s，,。！!？?]+)/,
+    /供应商[是为]?\s*([^\s，,。！!？?]+)/,
+    /([^\s，,。！!？?0-9¥￥]{2,8}(?:公司|农业|基地|商贸|农场|科技|生物|药业|菌业|集团|合作社))/,
+  ];
+  for (const pat of partyPatterns) {
+    m = t.match(pat);
+    if (m && m[1].length >= 2) { result.customer = m[1].trim(); break; }
+  }
+
+  // Payment status
+  if (/已收款|已收|全款|付清|到账|已到|收到/.test(t)) result.payment = '已收款';
+  else if (/未收|待收|欠款|没收|先发/.test(t)) result.payment = '未收款';
+  else if (/部分|定金|押金|首付|预付/.test(t)) result.payment = '部分收款';
+
+  // Order date override (e.g. "昨天" or explicit date)
+  if (/昨天|昨日/.test(t)) {
+    const d = new Date(); d.setDate(d.getDate()-1);
+    result.date = d.toISOString().split('T')[0];
+  } else if (/前天/.test(t)) {
+    const d = new Date(); d.setDate(d.getDate()-2);
+    result.date = d.toISOString().split('T')[0];
+  } else {
+    const dm = t.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/);
+    if (dm) result.date = dm[1].replace(/\//g,'-');
+    else result.date = today();
+  }
+
+  return result;
+}
+
+// ═══════ AMOUNT CALC ══════════════════════════════════════════════════
+function calcAmounts(qty, price) {
+  const base = qty * price;
+  const tax  = base * TAX;
+  const total = base + tax;
+  return { base, tax, total };
+}
+function fmtMoney(n) {
+  return '¥' + n.toLocaleString('zh-CN', {minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════ UI HELPERS ═══════════════════════════════════════════════════
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  setTimeout(() => m.scrollTop = m.scrollHeight, 50);
+}
+
+function addMsg(role, html) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const emoji = role === 'bot' ? '🤖' : '👤';
+  div.innerHTML = `
+    <div class="avatar">${emoji}</div>
+    <div class="bubble">${html}</div>
+  `;
+  msgs.appendChild(div);
+  scrollBottom();
+  return div.querySelector('.bubble');
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type?' '+type:'');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ═══════ CONFIRM CARD ═════════════════════════════════════════════════
+function buildConfirmCard(o) {
+  const {base, tax, total} = calcAmounts(o.qty, o.price);
+  const received = o.payment === '已收款' ? total : (o.payment === '部分收款' ? '请确认金额' : 0);
+  const payTag = o.payment === '已收款'
+    ? '<span class="tag green">✅ 已收款</span>'
+    : o.payment === '部分收款'
+    ? '<span class="tag gold">⚠️ 部分收款</span>'
+    : '<span class="tag red">❌ 未收款</span>';
+  const ptag = o.product.type === '引流款'
+    ? '<span class="tag blue">引流款·固定价</span>'
+    : '<span class="tag gray">价值定价</span>';
+
+  const modeLabel = pending.mode === 'purchase' ? '供应商' : '客户';
+  const payLabel = pending.mode === 'purchase' ? '付款状态' : '收款状态';
+  const titleMsg = pending.mode === 'purchase' ? '进货' : '销售';
+
+  return `
+    <div class="confirm-card">
+      <div class="row"><span class="k">日期</span><span class="v">${fmtDate(o.date)}</span></div>
+      <div class="row"><span class="k">品种</span><span class="v">${o.product.name} ${ptag}</span></div>
+      <div class="row"><span class="k">数量</span><span class="v">${o.qty} 万袋</span></div>
+      <div class="row"><span class="k">单价</span><span class="v">${fmtMoney(o.price)} / 万袋</span></div>
+      <div class="row"><span class="k">金额（不含税）</span><span class="v">${fmtMoney(base)}</span></div>
+      <div class="row"><span class="k">税额（9%）</span><span class="v">${fmtMoney(tax)}</span></div>
+      <div class="row"><span class="k">${modeLabel}</span><span class="v">${o.customer || '—'}</span></div>
+      <div class="row"><span class="k">${payLabel}</span><span class="v">${payTag}</span></div>
+      <div class="total">
+        <div class="label">含税总额</div>
+        <div class="num">${fmtMoney(total)}</div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn btn-green" onclick="confirmOrder()">✅ 确认入账</button>
+      <button class="btn btn-ghost" onclick="cancelOrder()">✗ 取消</button>
+    </div>`;
+}
+
+// ═══════ CONVERSATION STATE MACHINE ═══════════════════════════════════
+function handleInput(text) {
+  if (!text.trim()) return;
+  addMsg('user', escHtml(text));
+
+  if (state === 'idle' || state === 'confirm') {
+    // Check for payment update before treating as a new sale
+    if (tryUpdatePayment(text)) return;
+    startNew(text);
+  } else if (state === 'need_qty') {
+    const m = text.match(/(\d+(?:\.\d+)?)/);
+    if (m) {
+      pending.qty = parseFloat(m[1]);
+      // 引流款：自动补价；价值定价：不预设
+      if (pending.product && pending.product.type === '价值定价') {
+        delete pending.price;
+      } else if (!pending.price && pending.product && pending.product.stdPrice) {
+        pending.price = pending.product.stdPrice;
+      }
+      advanceState();
+    } else {
+      addMsg('bot', '请输入数字数量（单位：万袋），例如：<b>20</b>');
+    }
+  } else if (state === 'need_price') {
+    const m = text.match(/(\d+(?:\.\d+)?)/);
+    if (m) {
+      pending.price = parseFloat(m[1]);
+      advanceState();
+    } else {
+      addMsg('bot', '请输入数字价格，例如：<b>350</b>');
+    }
+  } else if (state === 'need_customer') {
+    pending.customer = text.trim();
+    advanceState();
+  } else if (state === 'need_payment') {
+    if (/已收|收到|全款|付清/.test(text)) { pending.payment = '已收款'; advanceState(); }
+    else if (/部分|定金|押金/.test(text)) { pending.payment = '部分收款'; advanceState(); }
+    else { pending.payment = '未收款'; advanceState(); }
+  }
+}
+
+function startNew(text) {
+  const parsed = parse(text);
+  pending = { ...parsed };
+
+  if (!pending.product) {
+    const chips = pending.mode === 'purchase'
+      ? `<button class="chip" onclick="chipSend('平菇原种')">平菇原种</button>
+         <button class="chip" onclick="chipSend('香菇原种')">香菇原种</button>
+         <button class="chip" onclick="chipSend('灵芝原种')">灵芝原种</button>`
+      : `<button class="chip" onclick="chipSend('平菇')">平菇</button>
+         <button class="chip" onclick="chipSend('香菇')">香菇</button>
+         <button class="chip" onclick="chipSend('杏鲍菇')">杏鲍菇</button>
+         <button class="chip" onclick="chipSend('灵芝')">灵芝</button>`;
+
+    addMsg('bot', `没有识别到菌种品种 😅<br>请包含品种名称<div class="chips">${chips}</div>`);
+    return;
+  }
+
+  if (!pending.qty) {
+    state = 'need_qty';
+    addMsg('bot', `好的，<b>${pending.product.name}</b>——请问数量是多少万袋？`);
+    return;
+  }
+
+  // 引流款：自动补标准价；价值定价：必须由销售员手动确认，清除自动解析的价格
+  if (pending.product.type === '价值定价') {
+    delete pending.price;   // 不接受自动解析价，强制进入 need_price 询问
+  } else if (!pending.price && pending.product.stdPrice) {
+    pending.price = pending.product.stdPrice;
+  }
+
+  advanceState();
+}
+
+function advanceState() {
+  if (!pending.price) {
+    state = 'need_price';
+    const hint = pending.product.type === '引流款'
+      ? `（引流款参考价 <b>¥${pending.product.stdPrice}</b>，如需调整请输入新价格）`
+      : '（价值定价品种，请输入本次成交价格，单位：元/万袋）';
+    addMsg('bot', `<b>${pending.product.name}</b> ${pending.qty}万袋<br>请输入单价 ${hint}`);
+    return;
+  }
+  if (!pending.customer) {
+    state = 'need_customer';
+    const custLabel = pending.mode === 'purchase' ? '供应商名称' : '客户名称';
+    addMsg('bot', `请问这笔订单的<b>${custLabel}</b>是？<br><span style="font-size:12px;color:var(--muted)">（可跳过：输入"跳过"）</span>`);
+    // Allow skip
+    return;
+  }
+  if (pending.customer === '跳过') pending.customer = '';
+  if (!pending.payment) {
+    state = 'need_payment';
+    const payLabel = pending.mode === 'purchase' ? '付款状态' : '收款状态';
+    addMsg('bot', `${payLabel}是？
+      <div class="btns" style="margin-top:10px">
+        <button class="btn btn-green" onclick="quickPay('已收款')">✅ 已收款</button>
+        <button class="btn btn-blue" onclick="quickPay('未收款')">❌ 未收款</button>
+        <button class="btn btn-gold" onclick="quickPay('部分收款')">⚠️ 部分收款</button>
+      </div>`);
+    return;
+  }
+  // All data collected — show confirmation
+  state = 'confirm';
+  addMsg('bot', '请核对以下订单信息：' + buildConfirmCard(pending));
+}
+
+function quickPay(val) {
+  pending.payment = val;
+  addMsg('user', val);
+  state = 'confirm';
+  addMsg('bot', '请核对以下订单信息：' + buildConfirmCard(pending));
+}
+
+function chipSend(val) {
+  document.getElementById('input').value = val;
+  send();
+}
+
+// ═══════ STORAGE ══════════════════════════════════════════════════════
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(orders));
+    localStorage.setItem(LS_SEQ, String(SEQ.v));
+    localStorage.setItem(LS_PUR, JSON.stringify(purchases));
+    localStorage.setItem(LS_PURSEQ, String(PUR_SEQ.v));
+  } catch(e) { /* storage full or unavailable */ }
+}
+
+function clearRecords() {
+  const totalRecords = orders.length + purchases.length;
+  if (!totalRecords) { showToast('暂无记录可清空'); return; }
+  if (!confirm('确定要清空全部销售和采购记录吗？\n此操作不可撤销。')) return;
+  orders = [];
+  purchases = [];
+  SEQ.v  = 1;
+  PUR_SEQ.v = 1;
+  try {
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_SEQ);
+    localStorage.removeItem(LS_PUR);
+    localStorage.removeItem(LS_PURSEQ);
+  } catch(e) {}
+  renderLedger();
+  showToast('记录已全部清空');
+}
+
+function confirmOrder() {
+  const isPurchase = pending.mode === 'purchase';
+  const o = {
+    ...pending,
+    ordNo: isPurchase ? purOrdNo() : ordNo()
+  };
+  const {base, tax, total} = calcAmounts(o.qty, o.price);
+  o.base       = base;
+  o.tax        = tax;
+  o.total      = total;
+  o.received   = o.payment === '已收款' ? total : 0;
+  // Full timestamp at the moment of recording
+  o.recordedAt = new Date().toLocaleString('zh-CN', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  }).replace(/\//g,'-');
+
+  if (isPurchase) {
+    purchases.push(o);
+  } else {
+    orders.push(o);
+  }
+
+  saveToStorage();
+  renderLedger();
+  state = 'idle';
+  pending = {};
+
+  const successMsg = isPurchase ? '进货成功' : '入账成功';
+  const icon = isPurchase ? '📦' : '💰';
+  addMsg('bot', `
+    <span class="tag green">✅ ${successMsg}</span><br>
+    <b>${o.product.name}</b> ${o.qty}万袋 已记录<br>
+    订单号：<b>${o.ordNo}</b><br>
+    <br>继续记录下一笔？
+    <div class="chips" style="margin-top:8px">
+      <button class="chip" onclick="setInput('卖了')">继续输入</button>
+      <button class="chip" onclick="exportCSV()">⬇️ 导出CSV</button>
+    </div>`);
+  showToast(successMsg + '：' + o.ordNo, 'green');
+}
+
+function cancelOrder() {
+  state = 'idle';
+  pending = {};
+  addMsg('bot', '已取消，随时重新开始 👌');
+}
+
+// ═══════ LEDGER RENDER ════════════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('ltab-sale').classList.toggle('active', tab === 'sale');
+  document.getElementById('ltab-purchase').classList.toggle('active', tab === 'purchase');
+  renderLedger();
+}
+
+function renderLedger() {
+  const body        = document.getElementById('ledger-body');
+  const countBadge  = document.getElementById('ledger-count');
+  const sumTotal    = document.getElementById('sum-total');
+  const sumReceived = document.getElementById('sum-received');
+  const sumCount    = document.getElementById('sum-count');
+  const sumPending  = document.getElementById('sum-pending');
+  const exportBtn   = document.getElementById('export-btn-label');
+  const syncBtn = document.getElementById('sync-btn');
+  const ledgerTitle = document.getElementById('ledger-title');
+  const sumLabel1 = document.getElementById('sum-label-1');
+  const sumLabel2 = document.getElementById('sum-label-2');
+  const sumLabel4 = document.getElementById('sum-label-4');
+
+  // Update tab counts
+  document.getElementById('tab-sale-cnt').textContent = orders.length;
+  document.getElementById('tab-pur-cnt').textContent = purchases.length;
+
+  // Get active data
+  const data = activeTab === 'sale' ? orders : purchases;
+  const modeLabel = activeTab === 'sale' ? '销售' : '采购';
+  const partyLabel = activeTab === 'sale' ? '客户' : '供应商';
+
+  // Update title and button labels
+  ledgerTitle.innerHTML = `📋 ${modeLabel}记录 <span class="count">${data.length}</span>`;
+  exportBtn.textContent = activeTab === 'sale' ? '⬇️ 导出销售CSV' : '⬇️ 导出采购CSV';
+  sumLabel1.textContent = activeTab === 'sale' ? '今日销售总额(含税)' : '今日采购总额(含税)';
+  sumLabel2.textContent = activeTab === 'sale' ? '今日已收款' : '今日已付款';
+  sumLabel4.textContent = activeTab === 'sale' ? '未收款' : '未付款';
+
+  countBadge.textContent = data.length;
+  exportBtn.disabled = data.length === 0;
+  syncBtn.disabled   = orders.length === 0;
+
+  if (data.length === 0) {
+    body.innerHTML = '<div class="ledger-empty">暂无记录<br>在左侧对话框开始记账</div>';
+    sumTotal.textContent = sumReceived.textContent = sumPending.textContent = '¥0';
+    sumCount.textContent = '0';
+    return;
+  }
+
+  // ── Summary: TODAY's figures only ──────────────────────────────────
+  const todayStr = today();
+  let todayTotal = 0, todayRcv = 0, todayCnt = 0;
+  data.forEach(o => {
+    if (o.date === todayStr) {
+      todayTotal += o.total;
+      todayRcv   += o.received;
+      todayCnt++;
+    }
+  });
+  sumCount.textContent    = todayCnt;
+  sumTotal.textContent    = fmtMoney(todayTotal);
+  sumReceived.textContent = fmtMoney(todayRcv);
+  sumPending.textContent  = fmtMoney(todayTotal - todayRcv);
+
+  // ── Body: ALL records, grouped by date (newest first) ─────────────
+  const groups = {};    // date → [orders]
+  const dates  = [];    // ordered unique dates
+  [...data].reverse().forEach(o => {
+    if (!groups[o.date]) { groups[o.date] = []; dates.push(o.date); }
+    groups[o.date].push(o);
+  });
+
+  body.innerHTML = dates.map(date => {
+    const isToday  = date === todayStr;
+    const dayLabel = isToday
+      ? `📅 今日 ${fmtDate(date)}`
+      : `📅 ${fmtDate(date)}`;
+    const dayStyle = isToday
+      ? 'background:#eff6ff;color:var(--p)'
+      : 'background:#f8fafc;color:var(--muted)';
+
+    const rows = groups[date].map(o => {
+      const payTag = o.payment === '已收款'
+        ? '<span class="tag green">已收款</span>'
+        : o.payment === '部分收款'
+        ? '<span class="tag gold">部分收款</span>'
+        : '<span class="tag red">未收款</span>';
+      const timeHint = o.recordedAt
+        ? `<span class="dot">·</span><span style="font-size:10px;color:var(--muted)">${o.recordedAt}</span>`
+        : '';
+      return `
+        <div class="ledger-row">
+          <div class="lr-top">
+            <div class="lr-name">${o.product.name}</div>
+            <div class="lr-amount">${fmtMoney(o.total)}</div>
+          </div>
+          <div class="lr-meta">
+            <span>${o.qty}万袋 × ${fmtMoney(o.price)}</span>
+            <span class="dot">·</span>
+            <span>${o.customer || (activeTab === 'sale' ? '客户未填' : '供应商未填')}</span>
+            <span class="dot">·</span>
+            ${payTag}
+            <span class="dot">·</span>
+            <span>${o.ordNo}</span>
+            ${timeHint}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="padding:7px 20px 5px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;${dayStyle}">
+        ${dayLabel}
+      </div>
+      ${rows}`;
+  }).join('');
+}
+
+// ═══════ PAYMENT UPDATE ═══════════════════════════════════════════════
+// Returns true if the message is recognised as a payment update (halts normal flow)
+function tryUpdatePayment(text) {
+  if (!/(收款|付款|收到款|到账|结清|已付|款到)/.test(text)) return false;
+  // Don't misidentify new-sale messages
+  if (/万袋|卖了|卖出|销售了|进货|采购/.test(text)) return false;
+
+  const unpaid = orders.filter(o => o.payment !== '已收款');
+  if (!unpaid.length) {
+    addMsg('bot', '📋 当前所有销售订单均已收款，无需更新 ✅');
+    return true;
+  }
+
+  // 1. Match by order number (e.g. JY20260323001)
+  const ordNoM = text.match(/JY\d{8}\d+/i);
+  if (ordNoM) {
+    const o = orders.find(o => o.ordNo.toUpperCase() === ordNoM[0].toUpperCase());
+    if (o) { showPaymentConfirm(o); return true; }
+  }
+
+  // 2. Match by customer name
+  let matched = unpaid.filter(o => o.customer && o.customer.length >= 2 && text.includes(o.customer));
+
+  // 3. Fallback: match by product keyword
+  if (!matched.length) {
+    matched = unpaid.filter(o => {
+      return o.product.keys.some(k => k.length >= 2 && text.includes(k));
+    });
+  }
+
+  // 4. "最后一笔" / "上笔" / "那笔"
+  if (!matched.length && /上笔|上一笔|最后一笔|刚才|那笔/.test(text)) {
+    matched = [unpaid[unpaid.length - 1]];
+  }
+
+  if (!matched.length) return false;
+
+  if (matched.length === 1) {
+    showPaymentConfirm(matched[0]);
+  } else {
+    showPaymentSelect(matched);
+  }
+  return true;
+}
+
+function showPaymentConfirm(o) {
+  const payBefore = o.payment === '部分收款'
+    ? `<span class="tag gold">部分收款</span>` : `<span class="tag red">未收款</span>`;
+  addMsg('bot', `找到这笔订单，确认<b>已全额收款</b>？
+    <div class="confirm-card" style="margin-top:10px">
+      <div class="row"><span class="k">订单号</span><span class="v">${o.ordNo}</span></div>
+      <div class="row"><span class="k">品种</span><span class="v">${o.product.name}</span></div>
+      <div class="row"><span class="k">客户</span><span class="v">${o.customer||'—'}</span></div>
+      <div class="row"><span class="k">含税金额</span><span class="v">${fmtMoney(o.total)}</span></div>
+      <div class="row"><span class="k">当前状态</span><span class="v">${payBefore}</span></div>
+    </div>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn btn-green" onclick="applyPaymentUpdate('${o.ordNo}')">✅ 确认全额收款</button>
+      <button class="btn btn-ghost" onclick="addMsg('bot','已取消，如需更新请重新输入 👌')">取消</button>
+    </div>`);
+}
+
+function showPaymentSelect(matches) {
+  const items = matches.map(o => `
+    <button class="btn btn-blue" style="width:100%;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:6px;text-align:left"
+      onclick="applyPaymentUpdate('${o.ordNo}')">
+      <span>${o.product.name}·${o.customer||'客户未填'}</span>
+      <span style="opacity:.8;font-size:12px">${fmtMoney(o.total)} ${o.ordNo}</span>
+    </button>`).join('');
+  addMsg('bot', `找到 <b>${matches.length}</b> 笔未收款订单，请点击确认哪笔收款了：
+    <div style="margin-top:10px">${items}</div>
+    <button class="btn btn-ghost" style="margin-top:4px" onclick="addMsg('bot','已取消 👌')">取消</button>`);
+}
+
+function applyPaymentUpdate(ordNo) {
+  const o = orders.find(o => o.ordNo === ordNo);
+  if (!o) { showToast('找不到该订单'); return; }
+  o.payment  = '已收款';
+  o.received = o.total;
+  saveToStorage();
+  renderLedger();
+  addMsg('bot', `<span class="tag green">✅ 收款已更新</span><br>
+    订单 <b>${o.ordNo}</b>（${o.product.name} · ${o.customer||'—'}）<br>
+    已标记为<b>已收款</b>，金额 <b>${fmtMoney(o.total)}</b> 已入账。`);
+  showToast('收款状态已更新', 'green');
+}
+
+// ═══════ EXPORT CSV ═══════════════════════════════════════════════════
+function exportCSV() {
+  const data = activeTab === 'sale' ? orders : purchases;
+  if (!data.length) { showToast('暂无记录'); return; }
+
+  const isSale = activeTab === 'sale';
+  const partyLabel = isSale ? '客户名称' : '供应商名称';
+  const amountLabel = isSale ? '已收金额(元)' : '已付金额(元)';
+  const unpaidLabel = isSale ? '未收金额(元)' : '未付金额(元)';
+  const statusLabel = isSale ? '收款状态' : '付款状态';
+
+  const headers = ['日期','记录时间','订单号',partyLabel,'产品品种','数量(万袋)','单价(元/万袋)',
+                   '金额(元)','税率','税额(元)','含税金额(元)',amountLabel,unpaidLabel,statusLabel,'备注'];
+  const rows = data.map(o => [
+    o.date, o.recordedAt||'', o.ordNo, o.customer||'', o.product.name,
+    o.qty, o.price,
+    o.base.toFixed(2),
+    TAX,
+    o.tax.toFixed(2),
+    o.total.toFixed(2),
+    o.received.toFixed(2),
+    (o.total - o.received).toFixed(2),
+    o.payment,
+    o.product.type
+  ]);
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${isSale ? '销售' : '采购'}记录_${today()}.csv`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 200);
+  showToast('CSV 已下载，可直接导入 Excel 台账', 'green');
+}
+
+// ═══════ EXCEL SYNC ═══════════════════════════════════════════════════
+function showSyncModal() {
+  _syncFile = null;
+  _syncWb = null;
+  _syncSheets = [];
+  document.getElementById('excel-file').value = '';
+  document.getElementById('fd-icon').textContent = '📂';
+  document.getElementById('fd-hint').textContent = '菌优菌种_账务管理表格.xlsx';
+  document.getElementById('file-drop').classList.remove('has-file');
+  document.getElementById('m-step1-next').disabled = true;
+  const res = document.getElementById('merge-result');
+  res.style.display = 'none'; res.textContent = '';
+
+  // Show Step 1, hide others
+  document.getElementById('sync-step-1').classList.add('active');
+  document.getElementById('sync-step-2').classList.remove('active');
+  document.getElementById('sync-step-3').classList.remove('active');
+
+  document.getElementById('sync-modal').classList.add('show');
+}
+
+function hideSyncModal() {
+  document.getElementById('sync-modal').classList.remove('show');
+}
+
+function onFileSelected(inp) {
+  if (!inp.files.length) return;
+  _syncFile = inp.files[0];
+  document.getElementById('fd-icon').textContent = '📗';
+  document.getElementById('fd-hint').textContent = _syncFile.name;
+  document.getElementById('file-drop').classList.add('has-file');
+  document.getElementById('m-step1-next').disabled = false;
+}
+
+async function syncStep2() {
+  if (!_syncFile) return;
+  if (typeof XLSX === 'undefined') { showToast('SheetJS 尚未加载，请检查网络连接'); return; }
+
+  try {
+    const buf = await _syncFile.arrayBuffer();
+    _syncWb = XLSX.read(buf, { type:'array', cellFormula:true, cellStyles:true, cellDates:true });
+    _syncSheets = _syncWb.SheetNames || [];
+
+    if (_syncSheets.length === 0) {
+      showToast('Excel 文件没有 Sheet'); return;
+    }
+
+    // Populate sheet selects
+    const saleSelect = document.getElementById('sheet-sale');
+    const purSelect = document.getElementById('sheet-purchase');
+
+    // Clear options
+    saleSelect.innerHTML = '<option value="">-- 请选择 --</option>';
+    purSelect.innerHTML = '<option value="">-- 跳过 --</option>';
+
+    _syncSheets.forEach(name => {
+      const opt1 = document.createElement('option');
+      opt1.value = name;
+      opt1.textContent = name;
+      saleSelect.appendChild(opt1);
+
+      const opt2 = document.createElement('option');
+      opt2.value = name;
+      opt2.textContent = name;
+      purSelect.appendChild(opt2);
+    });
+
+    // Try to restore from localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_EXCEL_MAP) || '{}');
+      if (saved.saleSheet) saleSelect.value = saved.saleSheet;
+      if (saved.purSheet) purSelect.value = saved.purSheet;
+    } catch(e) {}
+
+    // Move to Step 2
+    document.getElementById('sync-step-1').classList.remove('active');
+    document.getElementById('sync-step-2').classList.add('active');
+    document.getElementById('m-step2-detect').disabled =
+      saleSelect.value === '' && purSelect.value === '';
+
+    saleSelect.onchange = purSelect.onchange = () => {
+      document.getElementById('m-step2-detect').disabled =
+        saleSelect.value === '' && purSelect.value === '';
+    };
+
+  } catch(e) {
+    showToast('读取 Excel 失败：' + e.message);
+  }
+}
+
+async function syncStep3() {
+  const saleSheet = document.getElementById('sheet-sale').value;
+  const purSheet = document.getElementById('sheet-purchase').value;
+
+  if (!saleSheet && !purSheet) {
+    showToast('请至少选择一个 Sheet'); return;
+  }
+
+  // Save selections to localStorage
+  try {
+    localStorage.setItem(LS_EXCEL_MAP, JSON.stringify({ saleSheet, purSheet }));
+  } catch(e) {}
+
+  // Detect columns for sale sheet
+  const colMapBody = document.getElementById('col-map-body');
+  colMapBody.innerHTML = '';
+
+  // Detect sale sheet columns
+  if (saleSheet) {
+    const ws = _syncWb.Sheets[saleSheet];
+    const detectedCols = detectSheetColumns(ws);
+
+    Object.keys(detectedCols).forEach(field => {
+      const {col, header} = detectedCols[field];
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${field}</td>
+        <td><input type="text" class="col-input" id="col-${field}" value="${col}" placeholder="A,B,C..."></td>
+        <td><span class="${col ? 'col-ok' : 'col-warn'}">${header || '—'}</span></td>
+      `;
+      colMapBody.appendChild(row);
+    });
+  }
+
+  // Move to Step 3
+  document.getElementById('sync-step-2').classList.remove('active');
+  document.getElementById('sync-step-3').classList.add('active');
+}
+
+function detectSheetColumns(ws) {
+  // Try to find header row (rows 1-5)
+  let headerRow = -1;
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N10');
+
+  for (let r = 0; r < Math.min(5, range.e.r + 1); r++) {
+    let textCount = 0;
+    for (let c = 0; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({r, c})];
+      if (cell && cell.v && typeof cell.v === 'string' && cell.v.trim()) textCount++;
+    }
+    if (textCount >= 3) { headerRow = r; break; }
+  }
+
+  if (headerRow === -1) headerRow = 0;
+
+  // Build column map
+  const detected = {};
+  const fields = Object.keys(FIELD_MAP);
+  const usedCols = new Set();
+
+  fields.forEach(field => {
+    const keywords = FIELD_MAP[field];
+    let bestCol = null;
+    let bestHeader = '';
+
+    for (let c = 0; c <= range.e.c; c++) {
+      if (usedCols.has(c)) continue;
+      const cell = ws[XLSX.utils.encode_cell({r: headerRow, c})];
+      if (!cell || !cell.v) continue;
+      const headerStr = String(cell.v).toLowerCase();
+
+      for (const kw of keywords) {
+        if (headerStr.includes(kw.toLowerCase())) {
+          bestCol = c;
+          bestHeader = String(cell.v);
+          usedCols.add(c);
+          break;
+        }
+      }
+      if (bestCol !== null) break;
+    }
+
+    detected[field] = {
+      col: bestCol !== null ? String.fromCharCode(65 + bestCol) : '',
+      header: bestHeader
+    };
+  });
+
+  return detected;
+}
+
+function backToStep1() {
+  document.getElementById('sync-step-1').classList.add('active');
+  document.getElementById('sync-step-2').classList.remove('active');
+  document.getElementById('sync-step-3').classList.remove('active');
+}
+
+async function mergeToExcel() {
+  if (!_syncFile || !_syncWb) return;
+  const saleSheet = document.getElementById('sheet-sale').value;
+  const purSheet = document.getElementById('sheet-purchase').value;
+
+  if (!saleSheet && !purSheet) {
+    showMergeResult('请至少选择一个 Sheet', false); return;
+  }
+
+  try {
+    // Merge sales
+    if (saleSheet && orders.length > 0) {
+      mergeSheetData(_syncWb, saleSheet, orders, false);
+    }
+
+    // Merge purchases
+    if (purSheet && purchases.length > 0) {
+      mergeSheetData(_syncWb, purSheet, purchases, true);
+    }
+
+    // Download
+    const out  = XLSX.write(_syncWb, { bookType:'xlsx', type:'array' });
+    const blob = new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `菌优菌种_账务管理表格_${today()}.xlsx`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 200);
+
+    showMergeResult(`✅ 同步成功！文件已下载。`, true);
+  } catch(e) {
+    showMergeResult('❌ 处理出错：' + e.message, false);
+  }
+}
+
+function mergeSheetData(wb, sheetName, dataArray, isPurchase) {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return;
+
+  const range  = XLSX.utils.decode_range(ws['!ref'] || 'A1:N204');
+  const existing = {};
+  for (let r = 4; r <= range.e.r; r++) {
+    const cell = ws[XLSX.utils.encode_cell({r, c:1})];
+    if (cell && cell.v) existing[String(cell.v).trim()] = r;
+  }
+
+  let nextR = 4;
+  while (nextR <= range.e.r) {
+    const a = ws[XLSX.utils.encode_cell({r:nextR, c:0})];
+    if (!a || !a.v) break;
+    nextR++;
+  }
+
+  dataArray.forEach(o => {
+    const key = o.ordNo;
+    if (key in existing) {
+      const r = existing[key];
+      ws[XLSX.utils.encode_cell({r, c:10})] = { t:'n', v: o.received };
+      ws[XLSX.utils.encode_cell({r, c:12})] = { t:'s', v: o.payment };
+    } else {
+      const r = nextR;
+      const er = r + 1;
+
+      const setN = (c, v, f) => {
+        const cell = f ? {t:'n', v, f} : {t:'n', v};
+        ws[XLSX.utils.encode_cell({r, c})] = cell;
+      };
+      const setS = (c, v) => ws[XLSX.utils.encode_cell({r, c})] = {t:'s', v};
+      const setD = (c, v) => ws[XLSX.utils.encode_cell({r, c})] = {t:'d', v: new Date(v)};
+
+      setD(0,  o.date);
+      setS(1,  o.ordNo);
+      setS(2,  o.customer || '');
+      setS(3,  o.product.name);
+      setN(4,  o.qty);
+      setN(5,  o.price);
+      setN(6,  o.base, `=IF(OR(E${er}="",E${er}=0),"",E${er}*F${er})`);
+      setN(7,  TAX);
+      setN(8,  o.tax, `=IF(G${er}="","",G${er}*H${er})`);
+      setN(9,  o.total, `=IF(G${er}="","",G${er}+I${er})`);
+      setN(10, o.received);
+      setN(11, o.total - o.received, `=IF(J${er}="","",J${er}-K${er})`);
+      setS(12, o.payment);
+      setS(13, o.product.type + (o.recordedAt ? '  记录:'+o.recordedAt : ''));
+
+      if (r > range.e.r) range.e.r = r;
+      ws['!ref'] = XLSX.utils.encode_range(range);
+
+      nextR++;
+    }
+  });
+}
+
+function showMergeResult(msg, ok) {
+  const el = document.getElementById('merge-result');
+  el.textContent = msg;
+  el.className   = 'merge-result ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+}
+
+// ═══════ MISC ═════════════════════════════════════════════════════════
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function send() {
+  const inp = document.getElementById('input');
+  const val = inp.value.trim();
+  if (!val) return;
+  inp.value = '';
+  inp.style.height = '';
+  handleInput(val);
+}
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+function setInput(text) {
+  const inp = document.getElementById('input');
+  inp.value = text;
+  inp.focus();
+}
+
+// ═══════ INIT ═════════════════════════════════════════════════════════
+(function init() {
+  const now = new Date();
+  const ds  = now.toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
+  document.getElementById('date-badge').textContent  = ds;
+  document.getElementById('ledger-date').textContent = ds;
+
+  // ── Load persisted orders and purchases from localStorage ──────────
+  try {
+    const rawOrders = localStorage.getItem(LS_KEY);
+    if (rawOrders) {
+      const saved = JSON.parse(rawOrders);
+      if (Array.isArray(saved) && saved.length) {
+        orders = saved.map(o => {
+          const prod = PRODUCTS.find(p => p.id === o.product.id) || o.product;
+          return { ...o, product: prod };
+        });
+        const seqRaw = localStorage.getItem(LS_SEQ);
+        if (seqRaw) SEQ.v = parseInt(seqRaw) || 1;
+      }
+    }
+
+    const rawPurchases = localStorage.getItem(LS_PUR);
+    if (rawPurchases) {
+      const saved = JSON.parse(rawPurchases);
+      if (Array.isArray(saved) && saved.length) {
+        purchases = saved.map(o => {
+          const prod = PURCHASE_PRODUCTS.find(p => p.id === o.product.id) || o.product;
+          return { ...o, product: prod };
+        });
+        const seqRaw = localStorage.getItem(LS_PURSEQ);
+        if (seqRaw) PUR_SEQ.v = parseInt(seqRaw) || 1;
+      }
+    }
+
+    renderLedger();
+  } catch(e) { /* ignore storage errors */ }
+
+  // Welcome message
+  const histNote = orders.length || purchases.length
+    ? `<br><span style="color:var(--g);font-size:13px">✅ 已加载 <b>${orders.length + purchases.length}</b> 条历史记录</span>`
+    : '';
+  addMsg('bot', `你好！我是菌优销售/采购记账助手 🍄<br><br>
+    <b>怎么用：</b>直接告诉我销售或采购信息就行，例如：<br>
+    <span style="color:var(--p)">「卖了 20万袋 平菇 给 河南菌丰，已收款」</span><br>
+    <span style="color:var(--p)">「进货 20万袋 平菇原种 从 山东，已付款」</span><br><br>
+    我会自动记录日期和时间、计算税额，完成后可以<b>导出 CSV</b> 导入台账。<br>
+    收了之前未收款的货款？直接说：<span style="color:var(--g)">「河南菌丰收款了」</span>，我来更新。${histNote}
+    <div class="chips" style="margin-top:12px">
+      <button class="chip" onclick="setInput('卖了20万袋平菇，河南菌丰基地，已收款')">示例：销售</button>
+      <button class="chip" onclick="setInput('进货20万袋平菇原种，已付款')">示例：采购</button>
+      <button class="chip" onclick="setInput('河南菌丰收款了')">示例：收款更新</button>
+    </div>`);
+})();
+</script>
+</body>
+</html>
