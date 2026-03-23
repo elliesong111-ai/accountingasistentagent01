@@ -918,21 +918,32 @@ function renderLedger() {
 // ═══════ PAYMENT UPDATE ═══════════════════════════════════════════════
 // Returns true if the message is recognised as a payment update (halts normal flow)
 function tryUpdatePayment(text) {
-  if (!/(收款|付款|收到款|到账|结清|已付|款到)/.test(text)) return false;
+  const ordNoM = text.match(/JY\d{8}\d+/i);
+  const hasPayIntent = /(收款|付款|收到款|到账|结清|已付|款到)/.test(text);
+  if (!hasPayIntent && !ordNoM) return false;
   // Don't misidentify new-sale messages
   if (/万袋|卖了|卖出|销售了|进货|采购/.test(text)) return false;
+
+  // 1. Match by order number directly (supports "just input order number")
+  if (ordNoM) {
+    const ordNo = ordNoM[0].toUpperCase();
+    const o = orders.find(v => v.ordNo.toUpperCase() === ordNo);
+    if (!o) {
+      addMsg('bot', `未找到订单号 <b>${ordNo}</b>，请确认后重试。`);
+      return true;
+    }
+    if (o.payment === '已收款') {
+      addMsg('bot', `订单 <b>${o.ordNo}</b> 已是<span class="tag green">已收款</span>，无需重复更新。`);
+      return true;
+    }
+    showPaymentConfirm(o);
+    return true;
+  }
 
   const unpaid = orders.filter(o => o.payment !== '已收款');
   if (!unpaid.length) {
     addMsg('bot', '📋 当前所有销售订单均已收款，无需更新 ✅');
     return true;
-  }
-
-  // 1. Match by order number (e.g. JY20260323001)
-  const ordNoM = text.match(/JY\d{8}\d+/i);
-  if (ordNoM) {
-    const o = orders.find(o => o.ordNo.toUpperCase() === ordNoM[0].toUpperCase());
-    if (o) { showPaymentConfirm(o); return true; }
   }
 
   // 2. Match by customer name
