@@ -483,7 +483,6 @@ function showToast(msg, type='') {
 // ═══════ CONFIRM CARD ═════════════════════════════════════════════════
 function buildConfirmCard(o) {
   const {base, tax, total} = calcAmounts(o.qty, o.price);
-  const received = o.payment === '已收款' ? total : (o.payment === '部分收款' ? '请确认金额' : 0);
   const payTag = o.payment === '已收款'
     ? '<span class="tag green">✅ 已收款</span>'
     : o.payment === '部分收款'
@@ -495,7 +494,6 @@ function buildConfirmCard(o) {
 
   const modeLabel = pending.mode === 'purchase' ? '供应商' : '客户';
   const payLabel = pending.mode === 'purchase' ? '付款状态' : '收款状态';
-  const titleMsg = pending.mode === 'purchase' ? '进货' : '销售';
 
   return `
     <div class="confirm-card">
@@ -695,7 +693,6 @@ function confirmOrder() {
   pending = {};
 
   const successMsg = isPurchase ? '进货成功' : '入账成功';
-  const icon = isPurchase ? '📦' : '💰';
   addMsg('bot', `
     <span class="tag green">✅ ${successMsg}</span><br>
     <b>${o.product.name}</b> ${o.qty}万袋 已记录<br>
@@ -724,7 +721,6 @@ function switchTab(tab) {
 
 function renderLedger() {
   const body        = document.getElementById('ledger-body');
-  const countBadge  = document.getElementById('ledger-count');
   const sumTotal    = document.getElementById('sum-total');
   const sumReceived = document.getElementById('sum-received');
   const sumCount    = document.getElementById('sum-count');
@@ -743,7 +739,6 @@ function renderLedger() {
   // Get active data
   const data = activeTab === 'sale' ? orders : purchases;
   const modeLabel = activeTab === 'sale' ? '销售' : '采购';
-  const partyLabel = activeTab === 'sale' ? '客户' : '供应商';
 
   // Update title and button labels
   ledgerTitle.innerHTML = `📋 ${modeLabel}记录 <span class="count" id="ledger-count">${data.length}</span>`;
@@ -752,7 +747,8 @@ function renderLedger() {
   sumLabel2.textContent = activeTab === 'sale' ? '今日已收款' : '今日已付款';
   sumLabel4.textContent = activeTab === 'sale' ? '未收款' : '未付款';
 
-  countBadge.textContent = data.length;
+  const countBadge = document.getElementById('ledger-count');
+  if (countBadge) countBadge.textContent = data.length;
   exportBtn.disabled = data.length === 0;
   syncBtn.disabled   = orders.length === 0;
 
@@ -1158,12 +1154,12 @@ async function mergeToExcel() {
   try {
     // Merge sales
     if (saleSheet && orders.length > 0) {
-      mergeSheetData(_syncWb, saleSheet, orders, false);
+      mergeSheetData(_syncWb, saleSheet, orders);
     }
 
     // Merge purchases
     if (purSheet && purchases.length > 0) {
-      mergeSheetData(_syncWb, purSheet, purchases, true);
+      mergeSheetData(_syncWb, purSheet, purchases);
     }
 
     // Download
@@ -1185,7 +1181,7 @@ async function mergeToExcel() {
   }
 }
 
-function mergeSheetData(wb, sheetName, dataArray, isPurchase) {
+function mergeSheetData(wb, sheetName, dataArray) {
   const ws = wb.Sheets[sheetName];
   if (!ws) return;
 
