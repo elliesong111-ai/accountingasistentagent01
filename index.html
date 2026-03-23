@@ -331,7 +331,7 @@ const FIELD_MAP = {
 };
 
 // ═══════ STATE ════════════════════════════════════════════════════════
-let state = 'idle'; // idle | need_price | need_customer | need_payment | confirm
+let state = 'idle'; // idle | need_qty | need_price | need_customer | need_payment | need_partial_amount | confirm
 let pending = {};   // partial order being built
 let orders  = [];   // committed orders — loaded from localStorage on init
 let purchases = []; // committed purchases — loaded from localStorage on init
@@ -422,9 +422,13 @@ function parse(text) {
   }
 
   // Payment status
-  if (/已收款|已收|全款|付清|到账|已到|收到/.test(t)) result.payment = '已收款';
+  if (/部分|定金|押金|首付|预付/.test(t)) result.payment = '部分收款';
+  else if (/已收款|已收|全款|付清|到账|已到|收到/.test(t)) result.payment = '已收款';
   else if (/未收|待收|欠款|没收|先发/.test(t)) result.payment = '未收款';
-  else if (/部分|定金|押金|首付|预付/.test(t)) result.payment = '部分收款';
+  if (result.payment === '部分收款') {
+    const paid = parsePartialPaidAmount(t);
+    if (paid !== null) result.received = paid;
+  }
 
   // Order date override (e.g. "昨天" or explicit date)
   if (/昨天|昨日/.test(t)) {
@@ -440,6 +444,17 @@ function parse(text) {
   }
 
   return result;
+}
+
+function parsePartialPaidAmount(text) {
+  const m = text.match(
+    /(?:部分收款|部分付款|已收|实收|收款|收到|收了|已付|实付|付款|付了|定金|押金|首付|预付)[^\d¥￥]{0,8}[¥￥]?\s*(\d+(?:\.\d+)?)\s*(万)?\s*(?:元|块|人民币)?/i
+  );
+  if (!m) return null;
+  let n = parseFloat(m[1]);
+  if (!Number.isFinite(n)) return null;
+  if (m[2]) n *= 10000;
+  return n;
 }
 
 // ═══════ AMOUNT CALC ══════════════════════════════════════════════════
@@ -483,6 +498,12 @@ function showToast(msg, type='') {
 // ═══════ CONFIRM CARD ═════════════════════════════════════════════════
 function buildConfirmCard(o) {
   const {base, tax, total} = calcAmounts(o.qty, o.price);
+  const received = o.payment === '已收款'
+    ? total
+    : o.payment === '部分收款'
+    ? Math.max(0, Number(o.received) || 0)
+    : 0;
+  const pendingAmt = Math.max(0, total - received);
   const payTag = o.payment === '已收款'
     ? '<span class="tag green">✅ 已收款</span>'
     : o.payment === '部分收款'
@@ -494,6 +515,8 @@ function buildConfirmCard(o) {
 
   const modeLabel = pending.mode === 'purchase' ? '供应商' : '客户';
   const payLabel = pending.mode === 'purchase' ? '付款状态' : '收款状态';
+  const paidLabel = pending.mode === 'purchase' ? '已付款' : '已收款';
+  const unpaidLabel = pending.mode === 'purchase' ? '未付款' : '未收款';
 
   return `
     <div class="confirm-card">
@@ -505,6 +528,8 @@ function buildConfirmCard(o) {
       <div class="row"><span class="k">税额（9%）</span><span class="v">${fmtMoney(tax)}</span></div>
       <div class="row"><span class="k">${modeLabel}</span><span class="v">${o.customer || '—'}</span></div>
       <div class="row"><span class="k">${payLabel}</span><span class="v">${payTag}</span></div>
+      <div class="row"><span class="k">${paidLabel}</span><span class="v">${fmtMoney(received)}</span></div>
+      <div class="row"><span class="k">${unpaidLabel}</span><span class="v">${fmtMoney(pendingAmt)}</span></div>
       <div class="total">
         <div class="label">含税总额</div>
         <div class="num">${fmtMoney(total)}</div>
@@ -551,9 +576,28 @@ function handleInput(text) {
     pending.customer = text.trim();
     advanceState();
   } else if (state === 'need_payment') {
-    if (/已收|收到|全款|付清/.test(text)) { pending.payment = '已收款'; advanceState(); }
-    else if (/部分|定金|押金/.test(text)) { pending.payment = '部分收款'; advanceState(); }
+    if (/部分|定金|押金/.test(text)) {
+      pending.payment = '部分收款';
+      const paid = parsePartialPaidAmount(text);
+      if (paid !== null) pending.received = paid;
+      advanceState();
+    }
+    else if (/已收|收到|全款|付清/.test(text)) { pending.payment = '已收款'; advanceState(); }
     else { pending.payment = '未收款'; advanceState(); }
+  } else if (state === 'need_partial_amount') {
+    const m = text.match(/([¥￥]?\s*\d+(?:\.\d+)?)\s*(万)?\s*(?:元|块|人民币)?/);
+    if (!m) {
+      addMsg('bot', '请输入本次已收金额，例如：<b>5000</b> 或 <b>0.5万元</b>');
+      return;
+    }
+    let n = parseFloat(String(m[1]).replace(/[¥￥\s]/g,''));
+    if (!Number.isFinite(n) || n <= 0) {
+      addMsg('bot', '金额需大于 0，请重新输入。');
+      return;
+    }
+    if (m[2]) n *= 10000;
+    pending.received = n;
+    advanceState();
   }
 }
 
@@ -619,6 +663,29 @@ function advanceState() {
       </div>`);
     return;
   }
+
+  if (pending.payment === '部分收款') {
+    const { total } = calcAmounts(pending.qty, pending.price);
+    const paid = Number(pending.received);
+    if (!Number.isFinite(paid) || paid <= 0) {
+      state = 'need_partial_amount';
+      const paidLabel = pending.mode === 'purchase' ? '已付款金额' : '已收款金额';
+      addMsg('bot', `你选择了<b>部分收款</b>，请填写本次${paidLabel}（单位：元），例如：<b>5000</b> 或 <b>0.5万元</b>`);
+      return;
+    }
+    if (paid >= total) {
+      pending.payment = '已收款';
+      pending.received = total;
+      addMsg('bot', `你输入的金额已达到含税总额，已自动调整为<b>已收款</b>。`);
+    }
+  }
+
+  if (pending.payment === '已收款') {
+    pending.received = calcAmounts(pending.qty, pending.price).total;
+  } else if (pending.payment === '未收款') {
+    pending.received = 0;
+  }
+
   // All data collected — show confirmation
   state = 'confirm';
   addMsg('bot', '请核对以下订单信息：' + buildConfirmCard(pending));
@@ -627,8 +694,14 @@ function advanceState() {
 function quickPay(val) {
   pending.payment = val;
   addMsg('user', val);
-  state = 'confirm';
-  addMsg('bot', '请核对以下订单信息：' + buildConfirmCard(pending));
+  if (val === '部分收款') {
+    delete pending.received;
+    state = 'need_partial_amount';
+    const paidLabel = pending.mode === 'purchase' ? '已付款金额' : '已收款金额';
+    addMsg('bot', `请填写本次${paidLabel}（单位：元），例如：<b>5000</b> 或 <b>0.5万元</b>`);
+    return;
+  }
+  advanceState();
 }
 
 function chipSend(val) {
@@ -674,7 +747,22 @@ function confirmOrder() {
   o.base       = base;
   o.tax        = tax;
   o.total      = total;
-  o.received   = o.payment === '已收款' ? total : 0;
+  if (o.payment === '已收款') {
+    o.received = total;
+  } else if (o.payment === '部分收款') {
+    const paid = Number(o.received);
+    if (!Number.isFinite(paid) || paid <= 0) {
+      o.payment = '未收款';
+      o.received = 0;
+    } else if (paid >= total) {
+      o.payment = '已收款';
+      o.received = total;
+    } else {
+      o.received = paid;
+    }
+  } else {
+    o.received = 0;
+  }
   // Full timestamp at the moment of recording
   o.recordedAt = new Date().toLocaleString('zh-CN', {
     year:'numeric', month:'2-digit', day:'2-digit',
